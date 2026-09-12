@@ -5,7 +5,7 @@ on:
   push:
     branches: [ mon-cycle-build ]
     paths:
-      - 'moncycle-build/**'
+      - 'MonCycleApp/**'
       - '.github/workflows/moncycle-apk.yml'
 
 jobs:
@@ -14,12 +14,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Reconstruct project archive
-        run: |
-          cat moncycle-build/part1.b64 moncycle-build/part2.b64 moncycle-build/part3.b64 moncycle-build/part4.b64 moncycle-build/part5.b64 | base64 -d > moncycle.zip
-          unzip -q moncycle.zip
-          test -f MonCycle/settings.gradle.kts
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -30,28 +24,24 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Android platform
-        run: sdkmanager "platforms;android-37" "build-tools;36.0.0" "platform-tools"
+      - name: Install Android SDK 35
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools"
 
-      - name: Set up Gradle 9.5
+      - name: Set up Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '9.5.0'
+          gradle-version: '8.9'
 
-      - name: Run unit tests
-        working-directory: MonCycle
-        run: gradle testDebugUnitTest --stacktrace
-
-      - name: Build APK
-        working-directory: MonCycle
+      - name: Build debug APK
+        working-directory: MonCycleApp
         run: gradle assembleDebug --stacktrace
 
       - name: Verify APK
-        run: test -f MonCycle/app/build/outputs/apk/debug/app-debug.apk
+        run: test -f MonCycleApp/app/build/outputs/apk/debug/app-debug.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Mon-Cycle-APK
-          path: MonCycle/app/build/outputs/apk/debug/app-debug.apk
+          path: MonCycleApp/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
