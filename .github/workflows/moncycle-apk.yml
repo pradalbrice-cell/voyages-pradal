@@ -15,6 +15,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Fix navigation calls
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('MonCycleApp/app/src/main/java/fr/moncycle/app/MainActivity.kt')
+          s=p.read_text()
+          s=s.replace('NavigationBarItem(tab==0,{tab=0},{Icon(Icons.Default.Home,null)},{Text("Aujourd’hui")})','NavigationBarItem(selected=tab==0,onClick={tab=0},icon={Icon(Icons.Default.Home,null)},label={Text("Aujourd’hui")})')
+          s=s.replace('NavigationBarItem(tab==1,{tab=1},{Icon(Icons.Default.CalendarMonth,null)},{Text("Calendrier")})','NavigationBarItem(selected=tab==1,onClick={tab=1},icon={Icon(Icons.Default.CalendarMonth,null)},label={Text("Calendrier")})')
+          s=s.replace('NavigationBarItem(tab==2,{tab=2},{Icon(Icons.Default.Settings,null)},{Text("Réglages")})','NavigationBarItem(selected=tab==2,onClick={tab=2},icon={Icon(Icons.Default.Settings,null)},label={Text("Réglages")})')
+          p.write_text(s)
+          PY
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -34,7 +46,7 @@ jobs:
 
       - name: Build debug APK
         working-directory: MonCycleApp
-        run: gradle assembleDebug --stacktrace
+        run: gradle assembleDebug --stacktrace --console=plain
 
       - name: Verify APK
         run: test -f MonCycleApp/app/build/outputs/apk/debug/app-debug.apk
