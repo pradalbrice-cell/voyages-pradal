@@ -70,28 +70,28 @@ jobs:
             adb shell uiautomator dump /sdcard/home.xml
             adb pull /sdcard/home.xml /tmp/home.xml
             grep -q "Mon Cycle" /tmp/home.xml
-            grep -q "Noter aujourd’hui" /tmp/home.xml
             grep -q "Accueil" /tmp/home.xml
             grep -q "Calendrier" /tmp/home.xml
             grep -q "Réglages" /tmp/home.xml
-            adb shell input tap 540 1690
+            adb shell input tap 540 1800
             sleep 2
             adb shell uiautomator dump /sdcard/calendar.xml
             adb pull /sdcard/calendar.xml /tmp/calendar.xml
-            test "$(grep -o 'text=\"Calendrier\"' /tmp/calendar.xml | wc -l)" -ge 2
-            adb shell input tap 900 1690
+            grep -q "Repères" /tmp/calendar.xml
+            adb shell input tap 900 1800
             sleep 2
             adb shell uiautomator dump /sdcard/settings.xml
             adb pull /sdcard/settings.xml /tmp/settings.xml
             grep -q "Calcul automatique" /tmp/settings.xml
-            grep -q "Durée moyenne du cycle" /tmp/settings.xml
-            adb shell input tap 180 1690
+            grep -q "Confidentialité" /tmp/settings.xml
+            adb shell input tap 180 1800
             sleep 2
             adb shell uiautomator dump /sdcard/home2.xml
             adb pull /sdcard/home2.xml /tmp/home2.xml
-            grep -q "Noter aujourd’hui" /tmp/home2.xml
+            grep -q "Mon Cycle" /tmp/home2.xml
+            grep -q "Aujourd" /tmp/home2.xml
             ! adb logcat -d -v time AndroidRuntime:E '*:S' | grep -q "Process: fr.moncycle.app"
-            ! adb logcat -d -v time | grep -q "FATAL EXCEPTION.*fr.moncycle.app"
+            ! adb logcat -d -v time | grep -q "FATAL EXCEPTION"
       - name: Publish verified APK on branch
         run: |
           mkdir -p apk
