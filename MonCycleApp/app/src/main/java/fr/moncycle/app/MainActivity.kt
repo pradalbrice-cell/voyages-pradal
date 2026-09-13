@@ -61,6 +61,7 @@ data class Status(val type:DayType,val predicted:Boolean)
 class MainActivity: ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        MarkerColorState.load(this)
         setContent {
             MaterialTheme(
                 colorScheme = lightColorScheme(
@@ -269,8 +270,8 @@ private fun dateRange(start:LocalDate?, end:LocalDate?):String {
             ){
                 InfoCard(
                     modifier=Modifier.weight(1f),
-                    iconColor=Primary,
-                    iconBg=PinkSoft,
+                    iconColor=statusColor(DayType.PERIOD),
+                    iconBg=statusColor(DayType.PERIOD).copy(alpha=.16f),
                     title="Prochaines règles",
                     primary=relativeLabel(estimatedPeriod,today,period=true),
                     secondary=shortDate(estimatedPeriod),
@@ -278,8 +279,8 @@ private fun dateRange(start:LocalDate?, end:LocalDate?):String {
                 )
                 InfoCard(
                     modifier=Modifier.weight(1f),
-                    iconColor=Ovulation,
-                    iconBg=PurpleSoft,
+                    iconColor=statusColor(DayType.OVULATION),
+                    iconBg=statusColor(DayType.OVULATION).copy(alpha=.16f),
                     title="Ovulation estimée",
                     primary=relativeLabel(estimatedOvulation,today),
                     secondary=shortDate(estimatedOvulation),
@@ -459,6 +460,7 @@ private fun dateRange(start:LocalDate?, end:LocalDate?):String {
     enabled:Boolean,
     onClick:()->Unit
 ){
+    val marker=statusColor(DayType.FERTILE)
     Card(
         Modifier.fillMaxWidth().clickable(onClick=onClick),
         shape=RoundedCornerShape(24.dp),
@@ -470,10 +472,10 @@ private fun dateRange(start:LocalDate?, end:LocalDate?):String {
             verticalAlignment=Alignment.CenterVertically
         ){
             Box(
-                Modifier.size(48.dp).background(PinkSoft,CircleShape),
+                Modifier.size(48.dp).background(marker.copy(alpha=.16f),CircleShape),
                 contentAlignment=Alignment.Center
             ){
-                Icon(Icons.Default.CalendarMonth,null,tint=Primary)
+                Icon(Icons.Default.CalendarMonth,null,tint=marker)
             }
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)){
@@ -549,10 +551,7 @@ private fun dateRange(start:LocalDate?, end:LocalDate?):String {
         DayType.LOW->Low
         else->Color(0xFFF3F1F5)
     }
-    val fg=when(status?.type){
-        DayType.FERTILE,DayType.OVULATION->Color.White
-        else->TextDark
-    }
+    val fg=readableTextColor(bg)
 
     Column(
         modifier.clickable(onClick=onClick),
@@ -692,7 +691,7 @@ private fun dateRange(start:LocalDate?, end:LocalDate?):String {
                         ){
                             Text(
                                 "$n",
-                                color=if(st?.type==DayType.FERTILE||st?.type==DayType.OVULATION)Color.White else TextDark,
+                                color=readableTextColor(if(st?.type==null||st.type==DayType.NONE)Color(0xFFF7F5F8) else bg),
                                 fontWeight=if(isToday)FontWeight.ExtraBold else FontWeight.Medium
                             )
                         }
@@ -841,6 +840,7 @@ private fun dateRange(start:LocalDate?, end:LocalDate?):String {
                 }
             }
         }
+        item{MarkerColorSettings()}
         item{
             ModernSettingsCard{
                 Column(verticalArrangement=Arrangement.spacedBy(10.dp)){
@@ -973,13 +973,7 @@ private fun dateRange(start:LocalDate?, end:LocalDate?):String {
     }
 }
 
-private fun statusColor(t:DayType?)=when(t){
-    DayType.PERIOD->Period
-    DayType.FERTILE->Fertile
-    DayType.OVULATION->Ovulation
-    DayType.LOW->Low
-    else->Color(0xFFD8D1DA)
-}
+private fun statusColor(t:DayType?)=MarkerColorState.color(t)
 
 private fun label(t:DayType?)=when(t){
     DayType.PERIOD->"Règles"
