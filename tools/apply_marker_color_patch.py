@@ -30,16 +30,9 @@ if header in s:
     s=s.replace('Modifier.size(48.dp).background(PinkSoft,CircleShape)','Modifier.size(48.dp).background(marker.copy(alpha=.16f),CircleShape)',1)
     s=s.replace('Icon(Icons.Default.CalendarMonth,null,tint=Primary)','Icon(Icons.Default.CalendarMonth,null,tint=marker)',1)
 
-if 'import androidx.compose.material.icons.filled.Favorite' not in s:
-    s=s.replace('import androidx.compose.material.icons.filled.Edit\n','import androidx.compose.material.icons.filled.Edit\nimport androidx.compose.material.icons.filled.Favorite\n')
-
-brand='''        Image(\n            painter=painterResource(R.drawable.mon_cycle_icon),\n            contentDescription="Logo Mon Cycle",\n            modifier=Modifier\n                .size(58.dp)\n                .clip(RoundedCornerShape(17.dp))\n        )'''
-brand2='''        Box(\n            modifier=Modifier.size(58.dp).clip(RoundedCornerShape(17.dp)).background(Brush.linearGradient(listOf(Color(0xFFFF7789),Color(0xFFF33166)))),\n            contentAlignment=Alignment.Center\n        ){\n            Icon(Icons.Default.Favorite,contentDescription="Logo Mon Cycle",tint=Color.White,modifier=Modifier.size(36.dp))\n        }'''
-s=s.replace(brand,brand2,1)
-
-hero='''            Image(\n                painter=painterResource(R.drawable.mon_cycle_icon),\n                contentDescription=null,\n                modifier=Modifier.padding(10.dp).clip(RoundedCornerShape(22.dp))\n            )'''
-hero2='''            Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center){\n                Icon(Icons.Default.Favorite,contentDescription=null,tint=Color.White,modifier=Modifier.size(68.dp))\n            }'''
-s=s.replace(hero,hero2,1)
+# Critical crash fix: the old mon_cycle_icon.png resource is corrupt on Android.
+# Use the verified vector drawable for every Compose painterResource call instead.
+s = s.replace('R.drawable.mon_cycle_icon', 'R.drawable.ic_mon_cycle_launcher')
 
 p.write_text(s,encoding='utf-8')
-print('Mon Cycle build patch applied.')
+print('Mon Cycle build patch applied with stable vector logo.')
