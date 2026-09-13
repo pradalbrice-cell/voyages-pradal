@@ -64,7 +64,12 @@ jobs:
             adb shell am force-stop fr.moncycle.app
             adb shell am start -W -n fr.moncycle.app/.MainActivity
             sleep 4
+            echo '===== ANDROID RUNTIME ====='
+            adb logcat -d -v time AndroidRuntime:E '*:S' || true
+            echo '===== APP LOGS ====='
+            adb logcat -d -v time | grep -i -E 'fr\.moncycle\.app|FATAL EXCEPTION|ResourceResolutionException|AndroidRuntime' | tail -n 250 || true
             PID=$(adb shell pidof fr.moncycle.app || true)
+            echo "PID=$PID"
             test -n "$PID"
             ! adb logcat -d -v time AndroidRuntime:E '*:S' | grep -q "Process: fr.moncycle.app"
             adb shell uiautomator dump /sdcard/window.xml
