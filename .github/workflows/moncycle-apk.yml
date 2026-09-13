@@ -1,9 +1,9 @@
-name: Build Mon Cycle APK
+name: Build Mon Cycle Modern APK
 
 on:
   workflow_dispatch:
   push:
-    branches: [ mon-cycle-build ]
+    branches: [ mon-cycle-modern ]
     paths:
       - 'MonCycleApp/**'
       - '.github/workflows/moncycle-apk.yml'
@@ -17,18 +17,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Fix navigation calls
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p=Path('MonCycleApp/app/src/main/java/fr/moncycle/app/MainActivity.kt')
-          s=p.read_text()
-          s=s.replace('NavigationBarItem(tab==0,{tab=0},{Icon(Icons.Default.Home,null)},{Text("Aujourd’hui")})','NavigationBarItem(selected=tab==0,onClick={tab=0},icon={Icon(Icons.Default.Home,null)},label={Text("Aujourd’hui")})')
-          s=s.replace('NavigationBarItem(tab==1,{tab=1},{Icon(Icons.Default.CalendarMonth,null)},{Text("Calendrier")})','NavigationBarItem(selected=tab==1,onClick={tab=1},icon={Icon(Icons.Default.CalendarMonth,null)},label={Text("Calendrier")})')
-          s=s.replace('NavigationBarItem(tab==2,{tab=2},{Icon(Icons.Default.Settings,null)},{Text("Réglages")})','NavigationBarItem(selected=tab==2,onClick={tab=2},icon={Icon(Icons.Default.Settings,null)},label={Text("Réglages")})')
-          p.write_text(s)
-          PY
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -47,26 +35,26 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Build debug APK
+      - name: Build modern debug APK
         working-directory: MonCycleApp
         run: gradle assembleDebug --stacktrace --console=plain
 
       - name: Verify APK
         run: test -f MonCycleApp/app/build/outputs/apk/debug/app-debug.apk
 
-      - name: Publish direct APK on branch
+      - name: Publish modern APK on branch
         run: |
           mkdir -p apk
-          cp MonCycleApp/app/build/outputs/apk/debug/app-debug.apk apk/MonCycle.apk
+          cp MonCycleApp/app/build/outputs/apk/debug/app-debug.apk apk/MonCycle-modern.apk
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add apk/MonCycle.apk
-          git commit -m "Publish Mon Cycle APK" || true
-          git push origin HEAD:mon-cycle-build
+          git add apk/MonCycle-modern.apk
+          git commit -m "Publish Mon Cycle modern APK" || true
+          git push origin HEAD:mon-cycle-modern
 
-      - name: Upload APK artifact
+      - name: Upload modern APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Mon-Cycle-APK
+          name: Mon-Cycle-Modern-APK
           path: MonCycleApp/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
