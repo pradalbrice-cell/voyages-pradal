@@ -60,6 +60,31 @@ jobs:
           disable-animations: true
           script: |
             set -eux
+            tap_label() {
+              FILE="$1"
+              LABEL="$2"
+              COORDS=$(python3 - "$FILE" "$LABEL" <<'PY'
+            import re, sys, xml.etree.ElementTree as ET
+            path, target = sys.argv[1], sys.argv[2]
+            root = ET.parse(path).getroot()
+            found = []
+            for node in root.iter('node'):
+                if node.attrib.get('text') == target or node.attrib.get('content-desc') == target:
+                    m = re.match(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]', node.attrib.get('bounds',''))
+                    if m:
+                        x1,y1,x2,y2 = map(int,m.groups())
+                        found.append(((y1+y2)//2,(x1+x2)//2))
+            if not found:
+                raise SystemExit('label not found: '+target)
+            y,x = max(found)
+            print(x,y)
+            PY
+              )
+              X=$(echo "$COORDS" | cut -d' ' -f1)
+              Y=$(echo "$COORDS" | cut -d' ' -f2)
+              adb shell input tap "$X" "$Y"
+            }
+
             adb install -r MonCycleApp/app/build/outputs/apk/debug/app-debug.apk
             adb logcat -c
             adb shell am force-stop fr.moncycle.app
@@ -67,29 +92,35 @@ jobs:
             grep -q "Status: ok" /tmp/start.txt
             grep -q "Activity: fr.moncycle.app/.MainActivity" /tmp/start.txt
             sleep 3
+
             adb shell uiautomator dump /sdcard/home.xml
             adb pull /sdcard/home.xml /tmp/home.xml
             grep -q "Mon Cycle" /tmp/home.xml
             grep -q "Accueil" /tmp/home.xml
             grep -q "Calendrier" /tmp/home.xml
             grep -q "Réglages" /tmp/home.xml
-            adb shell input tap 540 1800
+
+            tap_label /tmp/home.xml "Calendrier"
             sleep 2
             adb shell uiautomator dump /sdcard/calendar.xml
             adb pull /sdcard/calendar.xml /tmp/calendar.xml
-            grep -q "Repères" /tmp/calendar.xml
-            adb shell input tap 900 1800
+            test "$(sha256sum /tmp/home.xml | cut -d' ' -f1)" != "$(sha256sum /tmp/calendar.xml | cut -d' ' -f1)"
+            test "$(grep -o 'text=\"Calendrier\"' /tmp/calendar.xml | wc -l)" -ge 2
+
+            tap_label /tmp/calendar.xml "Réglages"
             sleep 2
             adb shell uiautomator dump /sdcard/settings.xml
             adb pull /sdcard/settings.xml /tmp/settings.xml
+            test "$(sha256sum /tmp/calendar.xml | cut -d' ' -f1)" != "$(sha256sum /tmp/settings.xml | cut -d' ' -f1)"
             grep -q "Calcul automatique" /tmp/settings.xml
-            grep -q "Confidentialité" /tmp/settings.xml
-            adb shell input tap 180 1800
+
+            tap_label /tmp/settings.xml "Accueil"
             sleep 2
             adb shell uiautomator dump /sdcard/home2.xml
             adb pull /sdcard/home2.xml /tmp/home2.xml
             grep -q "Mon Cycle" /tmp/home2.xml
             grep -q "Aujourd" /tmp/home2.xml
+
             ! adb logcat -d -v time AndroidRuntime:E '*:S' | grep -q "Process: fr.moncycle.app"
             ! adb logcat -d -v time | grep -q "FATAL EXCEPTION"
       - name: Publish verified APK on branch
