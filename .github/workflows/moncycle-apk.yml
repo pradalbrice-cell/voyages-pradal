@@ -51,7 +51,7 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Smoke test on Android emulator
+      - name: Smoke test install launch and navigation
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 29
@@ -59,25 +59,39 @@ jobs:
           profile: pixel_2
           disable-animations: true
           script: |
+            set -eux
             adb install -r MonCycleApp/app/build/outputs/apk/debug/app-debug.apk
             adb logcat -c
             adb shell am force-stop fr.moncycle.app
-            adb shell am start -W -n fr.moncycle.app/.MainActivity
-            sleep 4
-            echo '===== ANDROID RUNTIME ====='
-            adb logcat -d -v time AndroidRuntime:E '*:S' || true
-            echo '===== APP LOGS ====='
-            adb logcat -d -v time | grep -i -E 'fr\.moncycle\.app|FATAL EXCEPTION|ResourceResolutionException|AndroidRuntime' | tail -n 250 || true
-            PID=$(adb shell pidof fr.moncycle.app || true)
-            echo "PID=$PID"
-            test -n "$PID"
+            adb shell am start -W -n fr.moncycle.app/.MainActivity | tee /tmp/start.txt
+            grep -q "Status: ok" /tmp/start.txt
+            grep -q "Activity: fr.moncycle.app/.MainActivity" /tmp/start.txt
+            sleep 3
+            adb shell uiautomator dump /sdcard/home.xml
+            adb pull /sdcard/home.xml /tmp/home.xml
+            grep -q "Mon Cycle" /tmp/home.xml
+            grep -q "Noter aujourd’hui" /tmp/home.xml
+            grep -q "Accueil" /tmp/home.xml
+            grep -q "Calendrier" /tmp/home.xml
+            grep -q "Réglages" /tmp/home.xml
+            adb shell input tap 540 1690
+            sleep 2
+            adb shell uiautomator dump /sdcard/calendar.xml
+            adb pull /sdcard/calendar.xml /tmp/calendar.xml
+            test "$(grep -o 'text=\"Calendrier\"' /tmp/calendar.xml | wc -l)" -ge 2
+            adb shell input tap 900 1690
+            sleep 2
+            adb shell uiautomator dump /sdcard/settings.xml
+            adb pull /sdcard/settings.xml /tmp/settings.xml
+            grep -q "Calcul automatique" /tmp/settings.xml
+            grep -q "Durée moyenne du cycle" /tmp/settings.xml
+            adb shell input tap 180 1690
+            sleep 2
+            adb shell uiautomator dump /sdcard/home2.xml
+            adb pull /sdcard/home2.xml /tmp/home2.xml
+            grep -q "Noter aujourd’hui" /tmp/home2.xml
             ! adb logcat -d -v time AndroidRuntime:E '*:S' | grep -q "Process: fr.moncycle.app"
-            adb shell uiautomator dump /sdcard/window.xml
-            adb pull /sdcard/window.xml /tmp/window.xml
-            grep -q "Mon Cycle" /tmp/window.xml
-            grep -q "Accueil" /tmp/window.xml
-            grep -q "Calendrier" /tmp/window.xml
-            grep -q "Réglages" /tmp/window.xml
+            ! adb logcat -d -v time | grep -q "FATAL EXCEPTION.*fr.moncycle.app"
       - name: Publish verified APK on branch
         run: |
           mkdir -p apk
