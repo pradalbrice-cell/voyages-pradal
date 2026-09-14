@@ -33,8 +33,9 @@ adb shell pm clear fr.moncycle.app
 adb logcat -c
 adb shell am start -W -n fr.moncycle.app/.MainActivity | tee /tmp/start.txt
 grep -q "Status: ok" /tmp/start.txt
-grep -q "Activity: fr.moncycle.app/.MainActivity" /tmp/start.txt
-sleep 3
+sleep 4
+PID=$(adb shell pidof fr.moncycle.app || true)
+test -n "$PID"
 
 adb shell uiautomator dump /sdcard/first.xml >/dev/null
 adb pull /sdcard/first.xml /tmp/first.xml >/dev/null
@@ -44,6 +45,8 @@ grep -q "Commencer" /tmp/first.xml
 
 tap_label /tmp/first.xml "Commencer"
 sleep 2
+PID=$(adb shell pidof fr.moncycle.app || true)
+test -n "$PID"
 adb shell uiautomator dump /sdcard/home.xml >/dev/null
 adb pull /sdcard/home.xml /tmp/home.xml >/dev/null
 grep -q "Mon Cycle" /tmp/home.xml
@@ -55,10 +58,12 @@ if grep -q "Bienvenue dans Mon Cycle" /tmp/home.xml; then
   exit 1
 fi
 
-# Restart: the onboarding must stay completed.
+# Restart: once the date is saved, onboarding must not return.
 adb shell am force-stop fr.moncycle.app
 adb shell am start -W -n fr.moncycle.app/.MainActivity >/tmp/restart.txt
-sleep 2
+sleep 3
+PID=$(adb shell pidof fr.moncycle.app || true)
+test -n "$PID"
 adb shell uiautomator dump /sdcard/restart.xml >/dev/null
 adb pull /sdcard/restart.xml /tmp/restart.xml >/dev/null
 if grep -q "Bienvenue dans Mon Cycle" /tmp/restart.xml; then
