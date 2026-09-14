@@ -53,13 +53,29 @@ grep -q "Quel était le premier jour de vos dernières règles" /tmp/setup1.xml
 grep -q "Commencer" /tmp/setup1.xml
 grep -q 'content-desc="Fermer"' /tmp/setup1.xml
 
-# 2. Closing with X does not complete setup.
+# 2. Closing with X does not complete setup, and the selected logo is to the right of MON CYCLE.
 tap_label /tmp/setup1.xml "Fermer"
 sleep 2
 adb shell uiautomator dump /sdcard/home_unconfigured.xml >/dev/null
 adb pull /sdcard/home_unconfigured.xml /tmp/home_unconfigured.xml >/dev/null
 ! grep -q "Bienvenue dans Mon Cycle" /tmp/home_unconfigured.xml
 grep -q "Accueil" /tmp/home_unconfigured.xml
+grep -q 'text="MON CYCLE"' /tmp/home_unconfigured.xml
+grep -q 'content-desc="Logo Mon Cycle"' /tmp/home_unconfigured.xml
+python3 - /tmp/home_unconfigured.xml <<'PY'
+import re, sys, xml.etree.ElementTree as ET
+root=ET.parse(sys.argv[1]).getroot()
+def center(kind,value):
+    for n in root.iter('node'):
+        if n.attrib.get(kind)==value:
+            m=re.match(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]',n.attrib.get('bounds',''))
+            if m:
+                x1,y1,x2,y2=map(int,m.groups()); return ((x1+x2)//2,(y1+y2)//2)
+    raise SystemExit(f'missing {kind}={value}')
+title=center('text','MON CYCLE')
+logo=center('content-desc','Logo Mon Cycle')
+assert logo[0] > title[0], (title,logo)
+PY
 
 # 3. Tapping Today reopens onboarding while still unconfigured.
 tap_label /tmp/home_unconfigured.xml "Aujourd’hui"
@@ -93,6 +109,7 @@ PID=$(adb shell pidof fr.moncycle.app || true)
 adb shell uiautomator dump /sdcard/restart.xml >/dev/null
 adb pull /sdcard/restart.xml /tmp/restart.xml >/dev/null
 ! grep -q "Bienvenue dans Mon Cycle" /tmp/restart.xml
+grep -q 'content-desc="Logo Mon Cycle"' /tmp/restart.xml
 
 # 7. Basic navigation still works.
 tap_label /tmp/restart.xml "Calendrier"
@@ -109,4 +126,4 @@ grep -q "Calcul automatique" /tmp/settings.xml
 
 if adb logcat -d -v time | grep -q "FATAL EXCEPTION"; then dump_crash_and_exit; fi
 
-echo "MON_CYCLE_ONBOARDING_PERSISTENCE_TEST_OK"
+echo "MON_CYCLE_V3_5_LOGO_AND_ONBOARDING_TEST_OK"
