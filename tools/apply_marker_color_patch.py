@@ -55,9 +55,28 @@ if 'FirstPeriodSetupDialog(' not in s:
     if app_end not in s: raise SystemExit('Could not find App insertion point for first-period setup')
     s=s.replace(app_end,app_replacement,1)
 
-# Use exactly the logo chosen by the user, not a redrawn substitute.
-s=s.replace('R.drawable.mon_cycle_icon','R.drawable.mon_cycle_selected')
+# Keep the user's exact PNG. Compose painterResource can crash on this PNG on API 29,
+# so decode its pixels directly with BitmapFactory for in-app display.
+if 'import android.graphics.BitmapFactory' not in s:
+    s=s.replace('import android.content.Context\n','import android.content.Context\nimport android.graphics.BitmapFactory\n',1)
+if 'import androidx.compose.ui.graphics.asImageBitmap' not in s:
+    s=s.replace('import androidx.compose.ui.graphics.Color\n','import androidx.compose.ui.graphics.Color\nimport androidx.compose.ui.graphics.asImageBitmap\n',1)
+
+logo_helper='''@Composable private fun MonCycleLogo(\n    modifier:Modifier=Modifier,\n    contentDescription:String?=null\n){\n    val context=LocalContext.current\n    val bitmap=remember{\n        BitmapFactory.decodeResource(context.resources,R.drawable.mon_cycle_selected)\n    }\n    if(bitmap!=null){\n        Image(\n            bitmap=bitmap.asImageBitmap(),\n            contentDescription=contentDescription,\n            modifier=modifier\n        )\n    }\n}\n\n'''
+if '@Composable private fun MonCycleLogo(' not in s:
+    s=s.replace('@Composable private fun BrandHeader(){',logo_helper+'@Composable private fun BrandHeader(){',1)
+
+patterns=[
+('''        Image(\n            painter=painterResource(R.drawable.mon_cycle_icon),\n            contentDescription="Logo Mon Cycle",\n            modifier=Modifier\n                .size(58.dp)\n                .clip(RoundedCornerShape(17.dp))\n        )''','''        MonCycleLogo(\n            contentDescription="Logo Mon Cycle",\n            modifier=Modifier\n                .size(58.dp)\n                .clip(RoundedCornerShape(17.dp))\n        )'''),
+('''            Image(\n                painter=painterResource(R.drawable.mon_cycle_icon),\n                contentDescription=null,\n                modifier=Modifier.padding(10.dp).clip(RoundedCornerShape(22.dp))\n            )''','''            MonCycleLogo(\n                contentDescription=null,\n                modifier=Modifier.padding(10.dp).clip(RoundedCornerShape(22.dp))\n            )'''),
+('''                Image(\n                    painter=painterResource(R.drawable.mon_cycle_icon),\n                    contentDescription=null,\n                    modifier=Modifier.size(44.dp).clip(RoundedCornerShape(13.dp))\n                )''','''                MonCycleLogo(\n                    contentDescription=null,\n                    modifier=Modifier.size(44.dp).clip(RoundedCornerShape(13.dp))\n                )'''),
+('''                Image(\n                    painter=painterResource(R.drawable.mon_cycle_icon),\n                    contentDescription=null,\n                    modifier=Modifier.size(78.dp).clip(RoundedCornerShape(22.dp))\n                )''','''                MonCycleLogo(\n                    contentDescription=null,\n                    modifier=Modifier.size(78.dp).clip(RoundedCornerShape(22.dp))\n                )''')
+]
+for old_block,new_block in patterns:
+    s=s.replace(old_block,new_block)
+
+# Any legacy selected-logo painter call must not survive the build.
 s=s.replace('R.drawable.ic_mon_cycle_launcher','R.drawable.mon_cycle_selected')
 
 p.write_text(s,encoding='utf-8')
-print('Mon Cycle V3.3 patch applied: onboarding + selected logo + marker colours.')
+print('Mon Cycle V3.3 patch applied: onboarding + exact selected logo + marker colours.')
