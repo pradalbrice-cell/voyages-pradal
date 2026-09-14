@@ -1,6 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+dump_crash_and_exit() {
+  echo "=== PROCESS STATUS ==="
+  adb shell pidof fr.moncycle.app || true
+  echo "=== ANDROIDRUNTIME / FATAL LOGS ==="
+  adb logcat -d -v time | grep -E -A40 -B10 "FATAL EXCEPTION|AndroidRuntime|fr.moncycle.app" | tail -n 240 || true
+  exit 1
+}
+
 tap_label() {
   local file="$1"
   local label="$2"
@@ -32,44 +40,37 @@ adb install -r "$APK"
 adb shell pm clear fr.moncycle.app
 adb logcat -c
 adb shell am start -W -n fr.moncycle.app/.MainActivity | tee /tmp/start.txt
-grep -q "Status: ok" /tmp/start.txt
+grep -q "Status: ok" /tmp/start.txt || dump_crash_and_exit
 sleep 4
 PID=$(adb shell pidof fr.moncycle.app || true)
-test -n "$PID"
+[ -n "$PID" ] || dump_crash_and_exit
 
-adb shell uiautomator dump /sdcard/first.xml >/dev/null
+adb shell uiautomator dump /sdcard/first.xml >/dev/null || dump_crash_and_exit
 adb pull /sdcard/first.xml /tmp/first.xml >/dev/null
-grep -q "Bienvenue dans Mon Cycle" /tmp/first.xml
-grep -q "Quel était le premier jour de vos dernières règles" /tmp/first.xml
-grep -q "Commencer" /tmp/first.xml
+grep -q "Bienvenue dans Mon Cycle" /tmp/first.xml || { cat /tmp/first.xml; dump_crash_and_exit; }
+grep -q "Quel était le premier jour de vos dernières règles" /tmp/first.xml || { cat /tmp/first.xml; exit 1; }
+grep -q "Commencer" /tmp/first.xml || { cat /tmp/first.xml; exit 1; }
 
 tap_label /tmp/first.xml "Commencer"
 sleep 2
 PID=$(adb shell pidof fr.moncycle.app || true)
-test -n "$PID"
+[ -n "$PID" ] || dump_crash_and_exit
 adb shell uiautomator dump /sdcard/home.xml >/dev/null
 adb pull /sdcard/home.xml /tmp/home.xml >/dev/null
 grep -q "Mon Cycle" /tmp/home.xml
 grep -q "Accueil" /tmp/home.xml
 grep -q "Calendrier" /tmp/home.xml
 grep -q "Réglages" /tmp/home.xml
-if grep -q "Bienvenue dans Mon Cycle" /tmp/home.xml; then
-  echo "Onboarding did not close"
-  exit 1
-fi
+! grep -q "Bienvenue dans Mon Cycle" /tmp/home.xml
 
-# Restart: once the date is saved, onboarding must not return.
 adb shell am force-stop fr.moncycle.app
 adb shell am start -W -n fr.moncycle.app/.MainActivity >/tmp/restart.txt
 sleep 3
 PID=$(adb shell pidof fr.moncycle.app || true)
-test -n "$PID"
+[ -n "$PID" ] || dump_crash_and_exit
 adb shell uiautomator dump /sdcard/restart.xml >/dev/null
 adb pull /sdcard/restart.xml /tmp/restart.xml >/dev/null
-if grep -q "Bienvenue dans Mon Cycle" /tmp/restart.xml; then
-  echo "Onboarding unexpectedly returned after a saved period date"
-  exit 1
-fi
+! grep -q "Bienvenue dans Mon Cycle" /tmp/restart.xml
 
 tap_label /tmp/restart.xml "Calendrier"
 sleep 2
@@ -83,13 +84,6 @@ adb shell uiautomator dump /sdcard/settings.xml >/dev/null
 adb pull /sdcard/settings.xml /tmp/settings.xml >/dev/null
 grep -q "Calcul automatique" /tmp/settings.xml
 
-if adb logcat -d -v time AndroidRuntime:E '*:S' | grep -q "Process: fr.moncycle.app"; then
-  adb logcat -d -v time AndroidRuntime:E '*:S'
-  exit 1
-fi
-if adb logcat -d -v time | grep -q "FATAL EXCEPTION"; then
-  adb logcat -d -v time | grep -A20 -B5 "FATAL EXCEPTION"
-  exit 1
-fi
+if adb logcat -d -v time | grep -q "FATAL EXCEPTION"; then dump_crash_and_exit; fi
 
 echo "MON_CYCLE_V3_3_SMOKE_TEST_OK"
