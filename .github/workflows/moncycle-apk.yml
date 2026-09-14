@@ -1,4 +1,4 @@
-name: Build and verify Mon Cycle V3.2
+name: Build and verify Mon Cycle V3.3
 
 on:
   workflow_dispatch:
@@ -19,7 +19,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Apply build fixes and marker colors
+      - name: Apply Mon Cycle V3.3 patch
         run: python3 tools/apply_marker_color_patch.py
 
       - name: Set up JDK 17
@@ -43,16 +43,16 @@ jobs:
         working-directory: MonCycleApp
         run: gradle assembleDebug --stacktrace --console=plain
 
-      - name: Verify APK structure and launcher icon
+      - name: Verify APK structure and selected launcher icon
         run: |
           APK="MonCycleApp/app/build/outputs/apk/debug/app-debug.apk"
           test -f "$APK"
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | tee /tmp/badging.txt
           grep -q "package: name='fr.moncycle.app'" /tmp/badging.txt
+          grep -q "versionName='3.3'" /tmp/badging.txt
           grep -q "application-label:'Mon Cycle'" /tmp/badging.txt
           grep -q "launchable-activity: name='fr.moncycle.app.MainActivity'" /tmp/badging.txt
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump resources "$APK" > /tmp/resources.txt
-          grep -q "drawable/ic_mon_cycle_launcher" /tmp/resources.txt
+          grep -q "application-icon-.*res/drawable/mon_cycle_selected.png" /tmp/badging.txt
 
       - name: Enable KVM
         run: |
@@ -60,7 +60,7 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: Smoke test install launch and navigation
+      - name: Smoke test onboarding launch and navigation
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 29
@@ -72,16 +72,16 @@ jobs:
       - name: Publish verified APK on branch
         run: |
           mkdir -p apk
-          cp MonCycleApp/app/build/outputs/apk/debug/app-debug.apk apk/MonCycle-V3.2.apk
+          cp MonCycleApp/app/build/outputs/apk/debug/app-debug.apk apk/MonCycle-V3.3.apk
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add apk/MonCycle-V3.2.apk
-          git commit -m "Publish verified Mon Cycle V3.2 APK [skip ci]" || true
+          git add apk/MonCycle-V3.3.apk
+          git commit -m "Publish verified Mon Cycle V3.3 APK [skip ci]" || true
           git push origin HEAD:mon-cycle-modern
 
       - name: Upload verified APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Mon-Cycle-V3.2-APK
+          name: Mon-Cycle-V3.3-APK
           path: MonCycleApp/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error

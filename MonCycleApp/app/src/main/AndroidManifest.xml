@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <application android:allowBackup="false" android:label="Mon Cycle" android:icon="@drawable/ic_mon_cycle_launcher" android:roundIcon="@drawable/ic_mon_cycle_launcher" android:theme="@android:style/Theme.Material.Light.NoActionBar">
+    <application
+        android:allowBackup="false"
+        android:label="Mon Cycle"
+        android:icon="@drawable/mon_cycle_selected"
+        android:roundIcon="@drawable/mon_cycle_selected"
+        android:theme="@android:style/Theme.Material.Light.NoActionBar">
         <activity android:name=".MainActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
