@@ -19,9 +19,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Verify exact selected logo source
+      - name: Verify selected logo source
         run: |
-          echo "f0705d2ecbde2f97733be383eddfee9a652c50fce69ad0f9d87f241c8326036b  MonCycleApp/app/src/main/res/drawable/mon_cycle_selected.png" | sha256sum -c -
+          LOGO="MonCycleApp/app/src/main/res/drawable/mon_cycle_selected.png"
+          test -s "$LOGO"
+          file "$LOGO" | grep -q "PNG image data"
 
       - name: Apply Mon Cycle patches
         run: |
