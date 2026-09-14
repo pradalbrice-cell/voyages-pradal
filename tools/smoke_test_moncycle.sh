@@ -45,33 +45,46 @@ sleep 4
 PID=$(adb shell pidof fr.moncycle.app || true)
 [ -n "$PID" ] || dump_crash_and_exit
 
-# First launch: home must be visible and onboarding must NOT open by itself.
-adb shell uiautomator dump /sdcard/home.xml >/dev/null || dump_crash_and_exit
-adb pull /sdcard/home.xml /tmp/home.xml >/dev/null
-grep -q "Mon Cycle" /tmp/home.xml
-grep -q "Accueil" /tmp/home.xml
-grep -q "Calendrier" /tmp/home.xml
-grep -q "Réglages" /tmp/home.xml
-! grep -q "Bienvenue dans Mon Cycle" /tmp/home.xml
+# 1. Fresh install: onboarding opens automatically.
+adb shell uiautomator dump /sdcard/setup1.xml >/dev/null || dump_crash_and_exit
+adb pull /sdcard/setup1.xml /tmp/setup1.xml >/dev/null
+grep -q "Bienvenue dans Mon Cycle" /tmp/setup1.xml
+grep -q "Quel était le premier jour de vos dernières règles" /tmp/setup1.xml
+grep -q "Commencer" /tmp/setup1.xml
+grep -q 'content-desc="Fermer"' /tmp/setup1.xml
 
-# Tapping Today on an unconfigured app must open the setup popup.
-tap_label /tmp/home.xml "Aujourd’hui"
+# 2. Closing with X does not complete setup.
+tap_label /tmp/setup1.xml "Fermer"
 sleep 2
-adb shell uiautomator dump /sdcard/setup.xml >/dev/null
-adb pull /sdcard/setup.xml /tmp/setup.xml >/dev/null
-grep -q "Bienvenue dans Mon Cycle" /tmp/setup.xml
-grep -q "Quel était le premier jour de vos dernières règles" /tmp/setup.xml
-grep -q "Commencer" /tmp/setup.xml
+adb shell uiautomator dump /sdcard/home_unconfigured.xml >/dev/null
+adb pull /sdcard/home_unconfigured.xml /tmp/home_unconfigured.xml >/dev/null
+! grep -q "Bienvenue dans Mon Cycle" /tmp/home_unconfigured.xml
+grep -q "Accueil" /tmp/home_unconfigured.xml
 
-# Save the default selected date and verify the app becomes configured.
-tap_label /tmp/setup.xml "Commencer"
+# 3. Tapping Today reopens onboarding while still unconfigured.
+tap_label /tmp/home_unconfigured.xml "Aujourd’hui"
+sleep 2
+adb shell uiautomator dump /sdcard/setup2.xml >/dev/null
+adb pull /sdcard/setup2.xml /tmp/setup2.xml >/dev/null
+grep -q "Bienvenue dans Mon Cycle" /tmp/setup2.xml
+grep -q "Commencer" /tmp/setup2.xml
+
+# 4. Validate date: onboarding completes permanently.
+tap_label /tmp/setup2.xml "Commencer"
 sleep 2
 adb shell uiautomator dump /sdcard/configured.xml >/dev/null
 adb pull /sdcard/configured.xml /tmp/configured.xml >/dev/null
 ! grep -q "Bienvenue dans Mon Cycle" /tmp/configured.xml
 grep -q "Jour 1" /tmp/configured.xml || grep -q "Règles" /tmp/configured.xml
 
-# Restart: onboarding must stay dismissed because a period start now exists.
+# 5. After setup, tapping Today must NOT reopen onboarding.
+tap_label /tmp/configured.xml "Aujourd’hui"
+sleep 2
+adb shell uiautomator dump /sdcard/today_after_setup.xml >/dev/null
+adb pull /sdcard/today_after_setup.xml /tmp/today_after_setup.xml >/dev/null
+! grep -q "Bienvenue dans Mon Cycle" /tmp/today_after_setup.xml
+
+# 6. Restart: onboarding must still never reappear.
 adb shell am force-stop fr.moncycle.app
 adb shell am start -W -n fr.moncycle.app/.MainActivity >/tmp/restart.txt
 sleep 3
@@ -81,6 +94,7 @@ adb shell uiautomator dump /sdcard/restart.xml >/dev/null
 adb pull /sdcard/restart.xml /tmp/restart.xml >/dev/null
 ! grep -q "Bienvenue dans Mon Cycle" /tmp/restart.xml
 
+# 7. Basic navigation still works.
 tap_label /tmp/restart.xml "Calendrier"
 sleep 2
 adb shell uiautomator dump /sdcard/calendar.xml >/dev/null
@@ -95,4 +109,4 @@ grep -q "Calcul automatique" /tmp/settings.xml
 
 if adb logcat -d -v time | grep -q "FATAL EXCEPTION"; then dump_crash_and_exit; fi
 
-echo "MON_CYCLE_V3_4_SMOKE_TEST_OK"
+echo "MON_CYCLE_ONBOARDING_PERSISTENCE_TEST_OK"
