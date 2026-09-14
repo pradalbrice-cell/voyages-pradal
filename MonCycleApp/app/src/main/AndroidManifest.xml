@@ -3,8 +3,8 @@
     <application
         android:allowBackup="false"
         android:label="Mon Cycle"
-        android:icon="@mipmap/ic_launcher"
-        android:roundIcon="@mipmap/ic_launcher_round"
+        android:icon="@drawable/mon_cycle_selected"
+        android:roundIcon="@drawable/mon_cycle_selected"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
         <activity android:name=".MainActivity" android:exported="true">
             <intent-filter>
