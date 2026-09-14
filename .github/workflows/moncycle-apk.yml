@@ -1,4 +1,4 @@
-name: Build and verify Mon Cycle V3.5
+name: Build and verify Mon Cycle V3.6
 
 on:
   workflow_dispatch:
@@ -19,11 +19,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Verify selected logo source
+      - name: Verify exact selected logo source
         run: |
           LOGO="MonCycleApp/app/src/main/res/drawable/mon_cycle_selected.png"
           test -s "$LOGO"
           file "$LOGO" | grep -q "PNG image data"
+          echo "1a06fce02215e077e1fbdb3ad90f5136e62e86fc601e16482efe8c14ced423c6  $LOGO" | sha256sum -c -
 
       - name: Apply Mon Cycle patches
         run: |
@@ -52,16 +53,19 @@ jobs:
         working-directory: MonCycleApp
         run: gradle assembleDebug --stacktrace --console=plain
 
-      - name: Verify APK structure and selected launcher icon
+      - name: Verify APK structure and launcher resources
         run: |
           APK="MonCycleApp/app/build/outputs/apk/debug/app-debug.apk"
           test -f "$APK"
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | tee /tmp/badging.txt
           grep -q "package: name='fr.moncycle.app'" /tmp/badging.txt
-          grep -q "versionName='3.5'" /tmp/badging.txt
+          grep -q "versionName='3.6'" /tmp/badging.txt
           grep -q "application-label:'Mon Cycle'" /tmp/badging.txt
           grep -q "launchable-activity: name='fr.moncycle.app.MainActivity'" /tmp/badging.txt
-          grep -q "application-icon-.*res/drawable/mon_cycle_selected.png" /tmp/badging.txt
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump resources "$APK" > /tmp/resources.txt
+          grep -q "mipmap/ic_launcher" /tmp/resources.txt
+          grep -q "mipmap/ic_launcher_round" /tmp/resources.txt
+          unzip -l "$APK" | grep -q "res/drawable/mon_cycle_selected.png"
 
       - name: Enable KVM
         run: |
@@ -76,21 +80,25 @@ jobs:
           arch: x86_64
           profile: pixel_2
           disable-animations: true
-          script: bash tools/smoke_test_moncycle.sh
+          script: |
+            bash tools/smoke_test_moncycle.sh
+            adb shell uiautomator dump /sdcard/final_home.xml >/dev/null
+            adb pull /sdcard/final_home.xml /tmp/final_home.xml >/dev/null
+            grep -q 'content-desc="Logo Mon Cycle"' /tmp/final_home.xml
 
       - name: Publish verified APK on branch
         run: |
           mkdir -p apk
-          cp MonCycleApp/app/build/outputs/apk/debug/app-debug.apk apk/MonCycle-V3.5.apk
+          cp MonCycleApp/app/build/outputs/apk/debug/app-debug.apk apk/MonCycle-V3.6.apk
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add apk/MonCycle-V3.5.apk
-          git commit -m "Publish verified Mon Cycle V3.5 APK [skip ci]" || true
+          git add apk/MonCycle-V3.6.apk
+          git commit -m "Publish verified Mon Cycle V3.6 APK [skip ci]" || true
           git push origin HEAD:mon-cycle-modern
 
       - name: Upload verified APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Mon-Cycle-V3.5-APK
+          name: Mon-Cycle-V3.6-APK
           path: MonCycleApp/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
