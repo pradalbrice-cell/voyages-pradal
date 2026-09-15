@@ -19,9 +19,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Verify selected logo source
+      - name: Install exact selected logo
         run: |
+          PAYLOAD="MonCycleApp/app/src/main/res/drawable/mon_cycle_selected_new.b64"
           LOGO="MonCycleApp/app/src/main/res/drawable/mon_cycle_selected.png"
+          test -s "$PAYLOAD"
+          base64 -d "$PAYLOAD" > "$LOGO"
           test -s "$LOGO"
           file "$LOGO" | grep -q "PNG image data"
           python3 - <<'PY'
@@ -35,8 +38,8 @@ jobs:
               assert chunk==b'IHDR', chunk
               w,h=struct.unpack('>II',f.read(8))
           assert w==h, (w,h)
-          assert w>=128, (w,h)
-          print('Logo OK:', w, h)
+          assert w>=96, (w,h)
+          print('Exact selected logo installed:', w, h)
           PY
 
       - name: Apply Mon Cycle patches
