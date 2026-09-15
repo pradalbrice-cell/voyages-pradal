@@ -9,6 +9,21 @@ dump_crash_and_exit() {
   exit 1
 }
 
+dump_ui() {
+  local remote="$1"
+  local localfile="$2"
+  local i
+  for i in 1 2 3 4 5; do
+    adb shell rm -f "$remote" >/dev/null 2>&1 || true
+    if adb shell uiautomator dump "$remote" >/dev/null 2>&1 && adb pull "$remote" "$localfile" >/dev/null 2>&1 && test -s "$localfile"; then
+      return 0
+    fi
+    sleep 2
+  done
+  echo "UI dump failed after retries: $remote"
+  dump_crash_and_exit
+}
+
 tap_label() {
   local file="$1"
   local label="$2"
@@ -46,8 +61,7 @@ PID=$(adb shell pidof fr.moncycle.app || true)
 [ -n "$PID" ] || dump_crash_and_exit
 
 # 1. Fresh install: onboarding opens automatically.
-adb shell uiautomator dump /sdcard/setup1.xml >/dev/null || dump_crash_and_exit
-adb pull /sdcard/setup1.xml /tmp/setup1.xml >/dev/null
+dump_ui /sdcard/setup1.xml /tmp/setup1.xml
 grep -q "Bienvenue dans Mon Cycle" /tmp/setup1.xml
 grep -q "Quel était le premier jour de vos dernières règles" /tmp/setup1.xml
 grep -q "Commencer" /tmp/setup1.xml
@@ -56,8 +70,7 @@ grep -q 'content-desc="Fermer"' /tmp/setup1.xml
 # 2. Closing with X does not complete setup, and the selected logo is to the right of MON CYCLE.
 tap_label /tmp/setup1.xml "Fermer"
 sleep 2
-adb shell uiautomator dump /sdcard/home_unconfigured.xml >/dev/null
-adb pull /sdcard/home_unconfigured.xml /tmp/home_unconfigured.xml >/dev/null
+dump_ui /sdcard/home_unconfigured.xml /tmp/home_unconfigured.xml
 ! grep -q "Bienvenue dans Mon Cycle" /tmp/home_unconfigured.xml
 grep -q "Accueil" /tmp/home_unconfigured.xml
 grep -q 'text="MON CYCLE"' /tmp/home_unconfigured.xml
@@ -80,50 +93,44 @@ PY
 # 3. Tapping Today reopens onboarding while still unconfigured.
 tap_label /tmp/home_unconfigured.xml "Aujourd’hui"
 sleep 2
-adb shell uiautomator dump /sdcard/setup2.xml >/dev/null
-adb pull /sdcard/setup2.xml /tmp/setup2.xml >/dev/null
+dump_ui /sdcard/setup2.xml /tmp/setup2.xml
 grep -q "Bienvenue dans Mon Cycle" /tmp/setup2.xml
 grep -q "Commencer" /tmp/setup2.xml
 
 # 4. Validate date: onboarding completes permanently.
 tap_label /tmp/setup2.xml "Commencer"
 sleep 2
-adb shell uiautomator dump /sdcard/configured.xml >/dev/null
-adb pull /sdcard/configured.xml /tmp/configured.xml >/dev/null
+dump_ui /sdcard/configured.xml /tmp/configured.xml
 ! grep -q "Bienvenue dans Mon Cycle" /tmp/configured.xml
 grep -q "Jour 1" /tmp/configured.xml || grep -q "Règles" /tmp/configured.xml
 
 # 5. After setup, tapping Today must NOT reopen onboarding.
 tap_label /tmp/configured.xml "Aujourd’hui"
 sleep 2
-adb shell uiautomator dump /sdcard/today_after_setup.xml >/dev/null
-adb pull /sdcard/today_after_setup.xml /tmp/today_after_setup.xml >/dev/null
+dump_ui /sdcard/today_after_setup.xml /tmp/today_after_setup.xml
 ! grep -q "Bienvenue dans Mon Cycle" /tmp/today_after_setup.xml
 
 # 6. Restart: onboarding must still never reappear.
 adb shell am force-stop fr.moncycle.app
 adb shell am start -W -n fr.moncycle.app/.MainActivity >/tmp/restart.txt
-sleep 3
+sleep 4
 PID=$(adb shell pidof fr.moncycle.app || true)
 [ -n "$PID" ] || dump_crash_and_exit
-adb shell uiautomator dump /sdcard/restart.xml >/dev/null
-adb pull /sdcard/restart.xml /tmp/restart.xml >/dev/null
+dump_ui /sdcard/restart.xml /tmp/restart.xml
 ! grep -q "Bienvenue dans Mon Cycle" /tmp/restart.xml
 grep -q 'content-desc="Logo Mon Cycle"' /tmp/restart.xml
 
 # 7. Basic navigation still works.
 tap_label /tmp/restart.xml "Calendrier"
 sleep 2
-adb shell uiautomator dump /sdcard/calendar.xml >/dev/null
-adb pull /sdcard/calendar.xml /tmp/calendar.xml >/dev/null
+dump_ui /sdcard/calendar.xml /tmp/calendar.xml
 test "$(grep -o 'text=\"Calendrier\"' /tmp/calendar.xml | wc -l)" -ge 2
 
 tap_label /tmp/calendar.xml "Réglages"
 sleep 2
-adb shell uiautomator dump /sdcard/settings.xml >/dev/null
-adb pull /sdcard/settings.xml /tmp/settings.xml >/dev/null
+dump_ui /sdcard/settings.xml /tmp/settings.xml
 grep -q "Calcul automatique" /tmp/settings.xml
 
 if adb logcat -d -v time | grep -q "FATAL EXCEPTION"; then dump_crash_and_exit; fi
 
-echo "MON_CYCLE_V3_5_LOGO_AND_ONBOARDING_TEST_OK"
+echo "MON_CYCLE_V3_6_LOGO_AND_ONBOARDING_TEST_OK"
