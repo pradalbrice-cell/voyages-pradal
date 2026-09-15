@@ -25,12 +25,18 @@ jobs:
           test -s "$LOGO"
           file "$LOGO" | grep -q "PNG image data"
           python3 - <<'PY'
-          from PIL import Image
+          import struct
           p='MonCycleApp/app/src/main/res/drawable/mon_cycle_selected.png'
-          im=Image.open(p)
-          assert im.width == im.height, im.size
-          assert im.width >= 128, im.size
-          print('Logo OK:', im.size, im.mode)
+          with open(p,'rb') as f:
+              sig=f.read(8)
+              assert sig==b'\x89PNG\r\n\x1a\n', sig
+              length=struct.unpack('>I',f.read(4))[0]
+              chunk=f.read(4)
+              assert chunk==b'IHDR', chunk
+              w,h=struct.unpack('>II',f.read(8))
+          assert w==h, (w,h)
+          assert w>=128, (w,h)
+          print('Logo OK:', w, h)
           PY
 
       - name: Apply Mon Cycle patches
