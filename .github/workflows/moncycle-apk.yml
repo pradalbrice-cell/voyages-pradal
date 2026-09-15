@@ -41,6 +41,7 @@ jobs:
           assert w>=96, (w,h)
           print('Exact selected logo installed:', w, h)
           PY
+          rm -f "$PAYLOAD"
 
       - name: Apply Mon Cycle patches
         run: |
