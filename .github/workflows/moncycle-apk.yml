@@ -30,7 +30,7 @@ jobs:
           with open(p,'rb') as f:
               sig=f.read(8)
               assert sig==b'\x89PNG\r\n\x1a\n', sig
-              length=struct.unpack('>I',f.read(4))[0]
+              f.read(4)
               chunk=f.read(4)
               assert chunk==b'IHDR', chunk
               w,h=struct.unpack('>II',f.read(8))
@@ -51,11 +51,10 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android SDK 35
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools"
+      - name: Prepare Android SDK 35
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0" "platform-tools"
 
       - name: Set up Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
