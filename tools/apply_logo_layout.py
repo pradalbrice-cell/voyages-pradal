@@ -4,20 +4,32 @@ import re
 p = Path('MonCycleApp/app/src/main/java/fr/moncycle/app/MainActivity.kt')
 s = p.read_text(encoding='utf-8')
 
+if 'import android.graphics.BitmapFactory' not in s:
+    s = s.replace('import android.os.Bundle\n', 'import android.os.Bundle\nimport android.graphics.BitmapFactory\n', 1)
+if 'import androidx.compose.ui.graphics.asImageBitmap' not in s:
+    s = s.replace('import androidx.compose.ui.graphics.Color\n', 'import androidx.compose.ui.graphics.Color\nimport androidx.compose.ui.graphics.asImageBitmap\n', 1)
 if 'import androidx.compose.ui.layout.ContentScale' not in s:
     s = s.replace('import androidx.compose.ui.res.painterResource\n', 'import androidx.compose.ui.res.painterResource\nimport androidx.compose.ui.layout.ContentScale\n', 1)
+if 'import androidx.compose.ui.platform.LocalContext' not in s:
+    s = s.replace('import androidx.compose.ui.layout.ContentScale\n', 'import androidx.compose.ui.layout.ContentScale\nimport androidx.compose.ui.platform.LocalContext\n', 1)
 
 logo_pattern = re.compile(r'@Composable private fun MonCycleLogo\(.*?\n\}\n\n@Composable private fun BrandHeader', re.S)
 logo_replacement = '''@Composable private fun MonCycleLogo(
     modifier:Modifier=Modifier,
     contentDescription:String?=null
 ){
-    Image(
-        painter=painterResource(R.drawable.mon_cycle_selected),
-        contentDescription=contentDescription,
-        modifier=modifier,
-        contentScale=ContentScale.Fit
-    )
+    val context = LocalContext.current
+    val bitmap = remember(R.drawable.mon_cycle_selected) {
+        BitmapFactory.decodeResource(context.resources, R.drawable.mon_cycle_selected)
+    }
+    if(bitmap != null){
+        Image(
+            bitmap=bitmap.asImageBitmap(),
+            contentDescription=contentDescription,
+            modifier=modifier,
+            contentScale=ContentScale.Fit
+        )
+    }
 }
 
 @Composable private fun BrandHeader'''
@@ -59,4 +71,4 @@ hero_pattern = re.compile(r'\s*Surface\(\s*modifier=Modifier\s*\.align\(Alignmen
 s = hero_pattern.sub('\n', s, count=1)
 
 p.write_text(s, encoding='utf-8')
-print('V3.6 logo layout applied: exact selected logo at right of MON CYCLE with Fit scaling.')
+print('V3.6 logo layout applied: exact selected logo decoded safely, full Fit scaling, right of MON CYCLE.')
